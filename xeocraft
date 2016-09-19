@@ -93,23 +93,24 @@ mc_start() { #start the server
       echo "Ram drive empty...  prepping."
       cp -R $MCSTORE/* $MCPATH/
     fi
-		screen -dmS mc$PORT $INVOCATION & #start server in screen session (needs to be migrated to tmux)
+
+		tmux new-session -s "mc$PORT" -d "$INVOCATION"
 
 		for (( i=0; i < 10; i++ )); do #check for PIDs to write files
-			screenpid=$(ps -eo '%p %a' | grep -v grep | grep -i screen | grep mc$PORT | awk '{print $1}')
-			javapid=$(ps -eo '%P %p' | grep "^\\s*$screenpid " | awk '{print $2}')
+			javapid=$(tmux list-panes -t "mc$PORT" -F "#{pane_pid} #{session_name}" | awk '{print $1}')
 
-			if [[ -n "$screenpid" && -n "$javapid" ]]; then
+
+			if [[ -n "$javapid" ]]; then
 				break
 			fi
 
 			sleep 1
 		done
 
-		if [[ -n "$screenpid" && -n "$javapid" ]]; then
+		if [[ -n "$javapid" ]]; then
 			echo "$SERVICE is now running."
 			echo "$javapid" > $MCPATH/java.pid #save pid to files
-			echo "$screenpid.mc$PORT" > $MCPATH/screen.name
+			echo "mc$PORT" > $MCPATH/tmux.name
 		else
 			echo "Could not start $SERVICE."
 		fi
@@ -192,8 +193,8 @@ mc_stop() { #gracefully shutdown the server
 
 	rm $MCSTORE/java.pid
 	rm $MCPATH/java.pid
-	rm $MCSTORE/screen.name
-	rm $MCPATH/screen.name
+	rm $MCSTORE/tmux.name
+	rm $MCPATH/tmux.name
 }
 
 mc_stopmonitor() { #to be depricated no used
@@ -247,11 +248,19 @@ mc_thinoutbackup() { # needs major work
 	fi
 }
 
-mc_exec() { #sendign commands to the MCserver (needs to be migrated to tmux)
+mc_exec() { #sendign commands to the MCserver
 	if is_running; then
-		screen -p 0 -S $(cat $MCPATH/screen.name) -X stuff "$@$(printf \\r)"
+		tmux send-keys -t "$(cat $MCPATH/tmux.name)" "$@" ENTER
 	else
 		echo "$SERVICE was not running. Not executing command."
+	fi
+}
+
+tmux_open() {
+	if is_running; then
+		tmux -2 attach-session -t $(cat $MCPATH/tmux.name) -d
+	else
+		echo "$SERVICE was not running. Not opening tmux session."
 	fi
 }
 
@@ -305,7 +314,7 @@ mc_disksavehalt() { #save server on shutdown
        mv $MCSTORE/$WORLD $MCSTORE/$WORLD.bak
      fi
 
-     echo "Saving, screen session closed"
+     echo "Saving, tmux session closed"
      cp -R $MCPATH/* $MCSTORE/
 
      if [ -d $MCSTORE/$WORLD.bak ]; then
@@ -344,6 +353,9 @@ case "$1" in
     shift
     mc_exec "$@"
     ;;
+	open)
+		tmux_open
+		;;
   dumpcrashlogs)
     mc_dumpcrashlogs
     ;;
