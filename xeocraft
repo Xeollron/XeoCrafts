@@ -14,7 +14,7 @@
 ### END INIT INFO
 
 # Settings start
-USERNAME=$whoami
+USERNAME=$(whoami)
 
 SERVICE='forge_latest.jar'																				#either change to server jar name or rename server jar to this
 MCSTORE="/home/$USERNAME/Documents/minecraft/xeocraft1" 					#storage location of server files
@@ -26,6 +26,7 @@ CRASHLOG_DB_PATH='/home/$USERNAME/Documents/minecraft/crashlogs'	#crashlog path
 JAVA_HOME="/usr/lib/jvm/java-8-oracle"														#java path
 
 MEMORY_OPTS="-Xmx6G -Xms6G" #Edit for Memory Allocation
+DISKSIZE="3072" #ramdisk size in MegaBytes
 # Java JVM options/config, not sure how required
 JAVA_OPTIONS="-d64 -server -XX:+UseG1GC -DJINTEGRA_NATIVE_MODE -DJINTEGRA_COINIT_VALUE=0 -Dsun.io.useCanonCaches=false -Djline.terminal=jline.UnsupportedTerminal -XX:ThreadPriorityPolicy=42 -XX:CompileThreshold=1500 -XX:+TieredCompilation -XX:ParallelGCThreads=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=15 -XX:+UnlockExperimentalVMOptions -XX:+UseAdaptiveGCBoundary -XX:+UseGCOverheadLimit -XX:+UseBiasedLocking -Xnoclassgc -Xverify:none -XX:UseSSE=4 -XX:+UseThreadPriorities -Djava.net.preferIPv4Stack=true -XX:+UseLargePages -XX:+OptimizeStringConcat -XX:+UseFastAccessorMethods -Xrs -XX:+UseCompressedOops -XX:+AggressiveOpts -Dfml.queryResult=confirm"
 
@@ -52,6 +53,21 @@ fi
 #			Server Operation Functions
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+ramdsk_mount() { #mount ramdisk
+	if mountpoint -q $MCPATH; then #check if ramdisk is already mounted
+		echo "$SERVICE ramdisk is mounted"
+	else
+		echo "Need to mount $SERVICE, requires root/su privledges to mount"
+		sudo mount -t tmpfs none $MCPATH -o size="$DISKSIZE"M #mount ramdisk
+		if mountpoint -q $MCPATH; then #check if mount succeded
+			echo "$SERVICE ramdisk is mounted"
+		else
+			echo 1>&2 "$SERVICE ramdisk failed to mount, exiting." #exit if ramdisk failed to mount
+			exit 2
+		fi
+	fi
+}
+
 is_running() { #check if the server is running
 	if [ ! -e $MCPATH/java.pid ]; then
 		return 1
@@ -71,7 +87,7 @@ mc_start() { #start the server
 		echo "Tried to start but $SERVICE was already running!"
 	else
 		echo "$SERVICE was not running... starting."
-
+		ramdsk_mount
 		cd $MCPATH #check if the server is in the ramdisk
 		if [ ! -f "$MCPATH/$SERVICE" ]; then #move server to ramdisk if empty
       echo "Ram drive empty...  prepping."
@@ -299,7 +315,7 @@ mc_disksavehalt() { #save server on shutdown
 }
 
 
-#Start-Stop here 
+#Start-Stop here
 case "$1" in
   start)
     if mc_start
