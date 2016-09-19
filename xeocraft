@@ -21,7 +21,6 @@ MCSTORE="/home/$USERNAME/Documents/minecraft/xeocraft1" 					#storage location o
 MCPATH="/home/$USERNAME/Documents/minecraft/xeocraft1_ramdisk"		#running ramdisk mount point
 BACKUPPATH="/home/$USERNAME/Documents/minecraft/backups"					#directory for backups to be stored
 OFFBACKUPPATH="/mnt/backups/$PORT/"																#off site/external/seperate drive storage path
-CHECKSERVER="/home/$USERNAME/Documents/minecraft/CheckServer"			#to be depricated?
 CRASHLOG_DB_PATH='/home/$USERNAME/Documents/minecraft/crashlogs'	#crashlog path
 JAVA_HOME="/usr/lib/jvm/java-8-oracle"														#java path
 
@@ -117,13 +116,6 @@ mc_start() { #start the server
 	fi
 }
 
-mc_startmonitor() { #to be depricated
-	if [ -z $CHECKSERVER ]; then
-		echo "started monitor"
-		/usr/bin/daemon --name=minecraft_checkserver -- $JAVA_HOME/bin/java -cp $CHECKSERVER CheckServer localhost $PORT
-	fi
-}
-
 mc_saveoff() { #turning of server saving for backup after forcing save
 	if is_running; then
 		echo "$SERVICE is running... suspending saves"
@@ -195,12 +187,6 @@ mc_stop() { #gracefully shutdown the server
 	rm $MCPATH/java.pid
 	rm $MCSTORE/tmux.name
 	rm $MCPATH/tmux.name
-}
-
-mc_stopmonitor() { #to be depricated no used
-	if [ -z $CHECKSERVER ]; then
-		/usr/bin/daemon --name=minecraft_checkserver --stop
-	fi
 }
 
 mc_backup() { #for running backups, using tar
@@ -327,13 +313,9 @@ mc_disksavehalt() { #save server on shutdown
 #Start-Stop here
 case "$1" in
   start)
-    if mc_start
-    then
-      mc_startmonitor
-    fi
+    mc_start
     ;;
   stop)
-    mc_stopmonitor
     mc_stop
 		mc_disksavehalt
     ;;
