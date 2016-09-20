@@ -236,7 +236,8 @@ mc_thinoutbackup() { # needs major work
 
 mc_exec() { #sendign commands to the MCserver
 	if is_running; then
-		tmux send-keys -t "$(cat $MCPATH/tmux.name)" "$@" ENTER
+		stuff=$(echo "$@" | awk  '{gsub(/\ /," ",$0);print $0}')
+		tmux send-keys -t "$(cat $MCPATH/tmux.name)" "$stuff" ENTER
 	else
 		echo "$SERVICE was not running. Not executing command."
 	fi
