@@ -50,28 +50,29 @@ fi
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 mc_eula(){
-	if [ ! -f "$MCPATH/eula.txt" ]; then #check for eula
+	if [ ! -f "$MCSTORE/eula.txt" ]; then #check for eula
 		echo "eula does not exist"
 		echo "Do you agree to the minecraft server eula at https://account.mojang.com/documents/minecraft_eula?"
 		read -p "by entering yes you are indicating your agreement to the minecraft EULA. (Yes/No) " response
 		response=${response,,}    # tolower
-		if [[ $response =~ ^(yes|y)$ ]]; then
+		if ! [[ $response =~ (yes|y) ]]; then
 			echo "User did not agree to eula, exiting..."
 			exit 1
 		fi
-		echo "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula)." > $MCPATH/eula.txt
-		echo "eula=true" >> $MCPATH/eula.txt
+		echo "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula)." > $MCSTORE/eula.txt
+		echo "eula=true" >>$MCSTORE/eula.txt
 	else
-		cat "$MCPATH/eula.txt" | grep -q "eula=true"
+		cat "$MCSTORE/eula.txt" | grep -q "eula=true"
 		if [[ "$?" -eq 1 ]]; then
 			echo "Do you agree to the minecraft server eula at https://account.mojang.com/documents/minecraft_eula?"
-			read -p "by entering yes you are indicating your agreement to the minecraft EULA. (Yes/No)" RESPONSE
-			if [[ $response =~ ^(yes|y)$ ]]; then
+			read -p "by entering yes you are indicating your agreement to the minecraft EULA. (Yes/No)" response
+			response=${response,,}    # tolower
+			if ! [[ $response =~ (yes|y) ]]; then
 				echo "User did not agree to eula, exiting..."
 				exit 1
 			fi
-			echo "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula)." > $MCPATH/eula.txt
-			echo "eula=true" >> $MCPATH/eula.txt
+			echo "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula)." > $MCSTORE/eula.txt
+			echo "eula=true" >> $MCSTORE/eula.txt
 		fi
 	fi
 }
