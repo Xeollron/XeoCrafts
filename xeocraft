@@ -13,18 +13,28 @@
 # Description:    Starts the minecraft server
 ### END INIT INFO
 
+DEFAULTSERVER="1" #the default server number if no number is given
+
+#check if first argument is a number for the server
+if [[ $1 =~ ^-?[0-9]+$ ]] ; then
+	SERVERNUM="$1"
+	shift 1
+else
+	SERVERNUM="$DEFAULTSERVER"
+fi
+
 # Settings start
 USERNAME=$(whoami)
 
 SERVICE='forge_latest.jar'																				#either change to server jar name or rename server jar to this
-MCSTORE="/home/$USERNAME/Documents/minecraft/xeocraft1" 					#storage location of server files
-MCPATH="/home/$USERNAME/Documents/minecraft/xeocraft1_ramdisk"		#running ramdisk mount point
+MCSTORE="/home/$USERNAME/Documents/minecraft/xeocraft$SERVERNUM" 					#storage location of server files
+MCPATH="/home/$USERNAME/Documents/minecraft/xeocraft$SERVERNUM""_ramdisk"		#running ramdisk mount point
 BACKUPPATH="/home/$USERNAME/Documents/minecraft/backups"					#directory for backups to be stored
 OFFBACKUPPATH="/mnt/backups/$PORT/"																#off site/external/seperate drive storage path
-CRASHLOG_DB_PATH='/home/$USERNAME/Documents/minecraft/crashlogs'	#crashlog path
-JAVA_HOME="/usr/lib/jvm/java-8-oracle"														#java path
+CRASHLOG_DB_PATH="/home/$USERNAME/Documents/minecraft/crashlogs"	#crashlog path
+JAVA_HOME="/usr/lib/jvm/java-8-jre/jre"														#java path (update to try to auto detect)
 
-MEMORY_OPTS="-Xmx6G -Xms6G" #Edit for Memory Allocation
+MEMORY_OPTS="-Xmx4G -Xms4G" #Edit for Memory Allocation
 DISKSIZE="3072" #ramdisk size in MegaBytes
 # Java JVM options/config, not sure how required
 JAVA_OPTIONS="-d64 -server -XX:+UseG1GC -DJINTEGRA_NATIVE_MODE -DJINTEGRA_COINIT_VALUE=0 -Dsun.io.useCanonCaches=false -Djline.terminal=jline.UnsupportedTerminal -XX:ThreadPriorityPolicy=42 -XX:CompileThreshold=1500 -XX:+TieredCompilation -XX:ParallelGCThreads=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=15 -XX:+UnlockExperimentalVMOptions -XX:+UseAdaptiveGCBoundary -XX:+UseGCOverheadLimit -XX:+UseBiasedLocking -Xnoclassgc -Xverify:none -XX:UseSSE=4 -XX:+UseThreadPriorities -Djava.net.preferIPv4Stack=true -XX:+UseLargePages -XX:+OptimizeStringConcat -XX:+UseFastAccessorMethods -Xrs -XX:+UseCompressedOops -XX:+AggressiveOpts -Dfml.queryResult=confirm"
@@ -38,7 +48,7 @@ WORLD=$(grep level-name $MCSTORE/server.properties | cut -d '=' -f 2)	#pull worl
 #need to figure out something to remind for users
 
 if [ -z "$PORT" ]; then #if no port set, sets to defaults
-	PORT=25565
+	PORT=$((25564+$SERVERNUM))
 fi
 
 # End of Settings
@@ -52,11 +62,38 @@ fi
 #			Server Operation Functions
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+mc_eula(){
+	if [ ! -f "$MCPATH/eula.txt" ]; then #check for eula
+		echo "eula does not exist"
+		echo "Do you agree to the minecraft server eula at https://account.mojang.com/documents/minecraft_eula?"
+		read -p "by entering yes you are indicating your agreement to the minecraft EULA. (Yes/No) " response
+		response=${response,,}    # tolower
+		if [[ $response =~ ^(yes|y)$ ]]; then
+			echo "User did not agree to eula, exiting..."
+			exit 1
+		fi
+		echo "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula)." > $MCPATH/eula.txt
+		echo "eula=true" >> $MCPATH/eula.txt
+	else
+		cat "$MCPATH/eula.txt" | grep -q "eula=true"
+		if [[ "$?" -eq 1 ]]; then
+			echo "Do you agree to the minecraft server eula at https://account.mojang.com/documents/minecraft_eula?"
+			read -p "by entering yes you are indicating your agreement to the minecraft EULA. (Yes/No)" RESPONSE
+			if [[ $response =~ ^(yes|y)$ ]]; then
+				echo "User did not agree to eula, exiting..."
+				exit 1
+			fi
+			echo "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula)." > $MCPATH/eula.txt
+			echo "eula=true" >> $MCPATH/eula.txt
+		fi
+	fi
+}
+
 ramdsk_mount() { #mount ramdisk
 	if mountpoint -q $MCPATH; then #check if ramdisk is already mounted
 		echo "$SERVICE ramdisk is mounted"
 	else
-		echo "Need to mount $SERVICE, requires root/su privledges to mount"
+		echo "Need to mount $SERVICE ramdisk, requires root/su privledges to mount"
 		sudo mount -t tmpfs none $MCPATH -o size="$DISKSIZE"M #mount ramdisk
 		if mountpoint -q $MCPATH; then #check if mount succeded
 			echo "$SERVICE ramdisk is mounted"
@@ -71,7 +108,6 @@ is_running() { #check if the server is running
 	if [ ! -e $MCPATH/java.pid ]; then
 		return 1
 	fi
-
 	pid=$(cat $MCPATH/java.pid)
 	if [ -z $pid ]; then
 		return 1
@@ -85,6 +121,7 @@ mc_start() { #start the server
 	if is_running; then
 		echo "Tried to start but $SERVICE was already running!"
 	else
+		mc_eula
 		echo "$SERVICE was not running... starting."
 		ramdsk_mount
 		cd $MCPATH #check if the server is in the ramdisk
@@ -98,14 +135,11 @@ mc_start() { #start the server
 		for (( i=0; i < 10; i++ )); do #check for PIDs to write files
 			javapid=$(tmux list-panes -t "mc$PORT" -F "#{pane_pid} #{session_name}" | awk '{print $1}')
 
-
 			if [[ -n "$javapid" ]]; then
 				break
 			fi
-
 			sleep 1
 		done
-
 		if [[ -n "$javapid" ]]; then
 			echo "$SERVICE is now running."
 			echo "$javapid" > $MCPATH/java.pid #save pid to files
@@ -141,15 +175,12 @@ mc_saveon() {	#restore auto saving
 
 mc_kill() {	#hault the server
 	pid=$(cat $MCPATH/java.pid)
-
 	echo "terminating process with pid $pid"
 	kill $pid
-
 	for (( i=0; i < 10; i++ )); do
 		is_running || break
 		sleep 1
 	done
-
 	if is_running; then
 		echo "$SERVICE could not be terminated, killing..."
 		kill -SIGKILL $pid
@@ -162,12 +193,10 @@ mc_kill() {	#hault the server
 mc_stop() { #gracefully shutdown the server
 	if is_running; then
 		echo "$SERVICE is running... stopping."
-
 		mc_exec "say SERVER SHUTTING DOWN IN 10 SECONDS. Saving map..."
 		mc_exec "save-all"
 		sleep 10
 		mc_exec "stop"
-
 		for (( i=0; i < 20; i++ )); do
 			is_running || break
 			sleep 1
@@ -175,14 +204,12 @@ mc_stop() { #gracefully shutdown the server
 	else
 		echo "$SERVICE was not running."
 	fi
-
 	if is_running; then
 		echo "$SERVICE could not be shut down cleanly... still running."
 		mc_kill
 	else
 		echo "$SERVICE is shut down."
 	fi
-
 	rm $MCSTORE/java.pid
 	rm $MCPATH/java.pid
 	rm $MCSTORE/tmux.name
@@ -285,7 +312,6 @@ mc_disksaverun() { #save the ramdisk to perminant drive
   else
     echo "Service is not running"
  fi
-
 }
 
 mc_disksavehalt() { #save server on shutdown
@@ -309,7 +335,6 @@ mc_disksavehalt() { #save server on shutdown
      fi
    fi
 }
-
 
 #Start-Stop here
 case "$1" in
