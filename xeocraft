@@ -1,17 +1,4 @@
 #!/bin/bash
-# /etc/init.d/minecraft
-
-### BEGIN INIT INFO
-# Provides:   minecraft
-# Required-Start: $local_fs $remote_fs
-# Required-Stop:  $local_fs $remote_fs
-# Should-Start:   $network
-# Should-Stop:    $network
-# Default-Start:  2 3 4 5
-# Default-Stop:   0 1 6
-# Short-Description:    Minecraft server
-# Description:    Starts the minecraft server
-### END INIT INFO
 
 DEFAULTSERVER="1" #the default server number if no number is given
 
@@ -383,7 +370,7 @@ case "$1" in
     ;;
 
   *)
-  echo "Usage: $(readlink -f $0) {start|stop|restart|backup|exec|dumpcrashlogs|disksavehalt|disksaverun|status}"
+  echo "Usage: $(readlink -f $0) [server number] {start|stop|restart|backup|exec|dumpcrashlogs|disksavehalt|disksaverun|status}"
   exit 1
   ;;
 esac
