@@ -18,8 +18,8 @@ DISKSIZE= size of ramdisk allocation, must be larger than server files
 JAVA_OPTIONS= extra options for the JVM to try to optimize for minecraft
 
 dependancies/requirements:
-  BASH > version 4.X
-  tmux
-  java jre (preferably 8 oracle)
+	BASH > version 4.X
+	tmux
+	java jre (preferably 8 oracle)
 
 Usage: xeocraft [server number] {start|stop|restart|backup|exec|dumpcrashlogs|disksavehalt|disksaverun|status}
