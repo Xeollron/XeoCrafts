@@ -1,0 +1,10 @@
+#access this file with crontab -e
+
+*/5 * * * * xeocraft 1 disksaverun
+20 */1 * * * xeocraft 1 backup
+*/5 * * * * xeocraft 2 disksaverun
+20 */1 * * * xeocraft 2 backup
+*/5 * * * * xeocraft 3 disksaverun
+20 */1 * * * xeocraft 3 backup
+*/5 * * * * xeocraft 4 disksaverun
+20 */1 * * * xeocraft 4 backup
