@@ -17,13 +17,15 @@ SERVICE='forge_latest.jar'																				#either change to server jar name 
 MCPATH="/home/$USERNAME/Documents/minecraft/xeocraft$SERVERNUM" 					#storage location of server files
 BACKUPPATH="/home/$USERNAME/Documents/minecraft/backups"					#directory for backups to be stored
 CRASHLOG_DB_PATH="/home/$USERNAME/Documents/minecraft/crashlogs"	#crashlog path
-JAVA_HOME="/usr/lib/jvm/java-8-jre/jre"														#java path (update to try to auto detect)
+JAVA_HOME="/usr/lib/jvm/java-8-server-jre"												#java path (update to try to auto detect)
+
+WRPATH="/home/$USERNAME/Documents/minecraft"																													#WarmRoast jar path (only necissary for server performance debugging)
 
 MEMORY_OPTS="-Xmx4G -Xms4G" #Edit for Memory Allocation
 # Java JVM options/config, not sure how required
-JAVA_OPTIONS="-d64 -server -XX:+UseG1GC -DJINTEGRA_NATIVE_MODE -DJINTEGRA_COINIT_VALUE=0 -Dsun.io.useCanonCaches=false -Djline.terminal=jline.UnsupportedTerminal -XX:ThreadPriorityPolicy=42 -XX:CompileThreshold=1500 -XX:+TieredCompilation -XX:ParallelGCThreads=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=15 -XX:+UnlockExperimentalVMOptions -XX:+UseAdaptiveGCBoundary -XX:+UseGCOverheadLimit -XX:+UseBiasedLocking -Xnoclassgc -Xverify:none -XX:UseSSE=4 -XX:+UseThreadPriorities -Djava.net.preferIPv4Stack=true -XX:+UseLargePages -XX:+OptimizeStringConcat -XX:+UseFastAccessorMethods -Xrs -XX:+UseCompressedOops -XX:+AggressiveOpts -Dfml.queryResult=confirm"
+JAVA_OPTIONS="-d64 -server -DJINTEGRA_NATIVE_MODE -DJINTEGRA_COINIT_VALUE=0 -Dsun.io.useCanonCaches=false -Djline.terminal=jline.UnsupportedTerminal -XX:ThreadPriorityPolicy=42 -XX:CompileThreshold=1500 -XX:+TieredCompilation -XX:ParallelGCThreads=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=15 -XX:+UnlockExperimentalVMOptions -XX:+UseAdaptiveGCBoundary -XX:+UseGCOverheadLimit -XX:+UseBiasedLocking -Xnoclassgc -Xverify:none -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -XX:-UseAdaptiveSizePolicy -XX:+UseThreadPriorities -Djava.net.preferIPv4Stack=true -XX:+UseLargePages -XX:+OptimizeStringConcat -XX:+UseFastAccessorMethods -Xrs -XX:+UseCompressedOops -XX:+AggressiveOpts -Dfml.queryResult=confirm"
 
-INVOCATION="${JAVA_HOME}/bin/java ${MEMORY_OPTS} ${JAVA_OPTIONS} -jar $SERVICE nogui" #jvm mc server compilation
+INVOCATION="${JAVA_HOME}/jre/bin/java ${MEMORY_OPTS} ${JAVA_OPTIONS} -jar $SERVICE nogui" #jvm mc server compilation
 BACKUPARCHIVEPATH=$BACKUPPATH/archive
 BACKUPDIR="$PORT:$(date).tar.gz"	#naming scheme for backup files
 PORT=$(grep server-port $MCPATH/server.properties | cut -d '=' -f 2) #pull port from server.properties file
@@ -248,6 +250,61 @@ mc_dumpcrashlogs() { #save crash reports
 	fi
 }
 
+server_perf_running() { #check if the server is running
+	if [ ! -e $MCPATH/warmroast.pid ]; then
+		return 1
+	fi
+	pid=$(cat $MCPATH/warmroast.pid)
+	if [ -z $pid ]; then
+		return 1
+	fi
+
+	ps -eo "%p" | grep "^\\s*$pid\\s*\$" > /dev/null
+	return $?
+}
+
+
+server_perf_start(){
+	if is_running; then
+		tmux new-session -s "wr$PORT" -d "java -Djava.library.path=${JAVA_HOME}/jre/bin -cp ${JAVA_HOME}/lib/tools.jar:$WRPATH/warmroast-1.0.0-SNAPSHOT.jar com.sk89q.warmroast.WarmRoast --pid $(cat $MCPATH/java.pid) --thread 'Server thread' --timeout 60"
+
+		for (( i=0; i < 10; i++ )); do #check for PIDs to write files
+			warmroastpid=$(tmux list-panes -t "wr$PORT" -F "#{pane_pid} #{session_name}" | awk '{print $1}')
+
+			if [[ -n "$warmroastpid" ]]; then
+				break
+			fi
+			sleep 1
+		done
+		if [[ -n "$warmroastpid" ]]; then
+			echo "warm roast is now running."
+			echo "open http://hostname:23000 to veiw info"
+			echo "$warmroastpid" > $MCPATH/warmroast.pid #save pid to file
+		else
+			echo "Could not start warmroastpid."
+		fi
+	else
+		echo "$SERVICE was not running. Not starting debug session."
+	fi
+}
+
+server_perf_end() {	#hault the debug service
+	pid=$(cat $MCPATH/warmroast.pid)
+	echo "terminating process with pid $pid"
+	kill $pid
+	for (( i=0; i < 10; i++ )); do
+		server_perf_running || break
+		sleep 1
+	done
+	if server_perf_running; then
+		echo "warm roast could not be terminated, killing..."
+		kill -SIGKILL $pid
+		echo "warm roast killed"
+	else
+		echo "warm roast terminated"
+	fi
+}
+
 #Start-Stop here
 case "$1" in
   start)
@@ -273,6 +330,12 @@ case "$1" in
 	open)
 		tmux_open
 		;;
+	debugon)
+		server_perf_start
+		;;
+	debugoff)
+		server_perf_end
+		;;
   dumpcrashlogs)
     mc_dumpcrashlogs
     ;;
@@ -286,7 +349,7 @@ case "$1" in
     ;;
 
   *)
-  echo "Usage: $(readlink -f $0) [server number] {start|stop|restart|backup|exec|dumpcrashlogs|disksavehalt|disksaverun|status}"
+  echo "Usage: $(readlink -f $0) [server number] {start|stop|restart|backup|exec|dumpcrashlogs|disksavehalt|disksaverun|status|open|debugon|debugoff}"
   exit 1
   ;;
 esac
