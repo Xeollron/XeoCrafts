@@ -21,4 +21,4 @@ dependancies/requirements:
 	tmux,
 	java jre (preferably 8 oracle)
 
-Usage: xeocraft [server number] {start|stop|restart|backup|exec|dumpcrashlogs|disksavehalt|disksaverun|status}
+Usage: xeocraft [server number] {start|stop|restart|backup|exec|dumpcrashlogs|disksavehalt|disksaverun|status|open}
