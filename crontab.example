@@ -1,10 +1,12 @@
 #access this file with crontab -e
 
+MAILTO=""
+
 */5 * * * * xeocraft 1 disksaverun
+#writes ramdisk to disk every 5min
+*/15 * * * * xeocraft 1 safestart
+#verifies server is up/if crashed starts server every 15min 
 20 */1 * * * xeocraft 1 backup
-*/5 * * * * xeocraft 2 disksaverun
-20 */1 * * * xeocraft 2 backup
-*/5 * * * * xeocraft 3 disksaverun
-20 */1 * * * xeocraft 3 backup
-*/5 * * * * xeocraft 4 disksaverun
-20 */1 * * * xeocraft 4 backup
+#does tar backup every hour, 20 min after the hour
+30 3 * * * xeocraft 1 slowrestart
+#every day a 3:30AM does a 10min warning server restart
