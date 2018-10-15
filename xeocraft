@@ -249,7 +249,7 @@ mc_restart(){
 		fi
 }
 
-mc_stop_delay(){#10min timer for server shutdown
+mc_stop_delay(){ #10min timer for server shutdown
 	if is_running; then
 		echo "$SERVICE is running... restarting in 10 minutes. ctrl+C to cancel"
 		mc_exec "say SERVER RESTARTING IN 10 MINUTES."
