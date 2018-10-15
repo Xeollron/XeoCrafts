@@ -238,7 +238,7 @@ mc_backup() { #for running backups, using tar
 	fi
 }
 
-mc_restart{
+mc_restart(){
 		if is_running; then
 			echo "$SERVICE is running... restarting"
 			mc_stop
