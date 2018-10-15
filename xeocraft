@@ -19,7 +19,7 @@ MCPATH="/home/$USERNAME/Documents/minecraft/xeocraft$SERVERNUM""_ramdisk"		#runn
 BACKUPPATH="/home/$USERNAME/Documents/minecraft/backups"					#directory for backups to be stored
 OFFBACKUPPATH="/mnt/backups/xeocraft$SERVERNUM/"															#off site/external/seperate drive storage path
 CRASHLOG_DB_PATH="/home/$USERNAME/Documents/minecraft/crashlogs"	#crashlog path
-JAVA_HOME="/usr/lib/jvm/java-8-jre/jre"														#java path (update to try to auto detect)
+JAVA_HOME="/usr/lib/jvm/java-8-server-jre/jre"														#java path (update to try to auto detect)
 
 MEMORY_OPTS="-Xmx4G -Xms4G" #Edit for Memory Allocation
 DISKSIZE="3072" #ramdisk size in MegaBytes
