@@ -238,6 +238,17 @@ mc_backup() { #for running backups, using tar
 	fi
 }
 
+mc_restart{
+		if is_running; then
+			echo "$SERVICE is running... restarting"
+			mc_stop
+			mc_disksavehalt
+			mc_start
+		else
+			echo "$SERVICE is not running, will not restart."
+		fi
+}
+
 mc_stop_delay(){#10min timer for server shutdown
 	if is_running; then
 		echo "$SERVICE is running... restarting in 10 minutes. ctrl+C to cancel"
@@ -372,9 +383,7 @@ case "$1" in
 		mc_disksavehalt
     ;;
   restart)
-    mc_stop
-		mc_disksavehalt
-    mc_start
+		mc_restart
     ;;
   backup)
 		mc_disksaverun
