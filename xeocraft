@@ -21,21 +21,21 @@ OFFBACKUPPATH="/mnt/backups/xeocraft$SERVERNUM/"															#off site/externa
 CRASHLOG_DB_PATH="/home/$USERNAME/Documents/minecraft/crashlogs"	#crashlog path
 JAVA_HOME="/usr/lib/jvm/java-8-server-jre/jre"														#java path (update to try to auto detect)
 
-MEMORY_OPTS="-Xmx4G -Xms4G" #Edit for Memory Allocation
+MEMORY_OPTS="-Xmx6G -Xms6G" #Edit for Memory Allocation
 DISKSIZE="3072" #ramdisk size in MegaBytes
 # Java JVM options/config, not sure how required
 JAVA_OPTIONS="-d64 -server -XX:+UseG1GC -DJINTEGRA_NATIVE_MODE -DJINTEGRA_COINIT_VALUE=0 -Dsun.io.useCanonCaches=false -Djline.terminal=jline.UnsupportedTerminal -XX:ThreadPriorityPolicy=42 -XX:CompileThreshold=1500 -XX:+TieredCompilation -XX:ParallelGCThreads=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=15 -XX:+UnlockExperimentalVMOptions -XX:+UseAdaptiveGCBoundary -XX:+UseGCOverheadLimit -XX:+UseBiasedLocking -Xnoclassgc -Xverify:none -XX:UseSSE=4 -XX:+UseThreadPriorities -Djava.net.preferIPv4Stack=true -XX:+UseLargePages -XX:+OptimizeStringConcat -XX:+UseFastAccessorMethods -Xrs -XX:+UseCompressedOops -XX:+AggressiveOpts -Dfml.queryResult=confirm"
 
 INVOCATION="${JAVA_HOME}/bin/java ${MEMORY_OPTS} ${JAVA_OPTIONS} -jar $SERVICE nogui" #jvm mc server compilation
 BACKUPARCHIVEPATH=$BACKUPPATH/archive
-BACKUPDIR="$PORT:$(date).tar.gz"	#naming scheme for backup files
+BACKUPDIR="$SERVERNUM"":$(date).tar.gz"	#naming scheme for backup files
 PORT=$(grep server-port $MCSTORE/server.properties | cut -d '=' -f 2) #pull port from server.properties file
 WORLD=$(grep level-name $MCSTORE/server.properties | cut -d '=' -f 2)	#pull world name from server.properties file
 
 #need to figure out something to remind for users
 
 if [ -z "$PORT" ]; then #if no port set, sets to defaults
-	PORT=$((25564+$SERVERNUM))
+	PORT=$((25560+$SERVERNUM))
 fi
 
 # End of Settings
@@ -105,6 +105,18 @@ is_running() { #check if the server is running
 	return $?
 }
 
+was_stopped() { #check if the server was stopped with the script
+	if is_running; then
+		return 0
+	else
+		if [ ! -e $MCPATH/java.pid ]; then
+			return 0
+		else
+			return 1
+		fi
+	fi
+}
+
 mc_start() { #start the server
 	if is_running; then
 		echo "Tried to start but $SERVICE was already running!"
@@ -135,6 +147,15 @@ mc_start() { #start the server
 		else
 			echo "Could not start $SERVICE."
 		fi
+	fi
+}
+
+mc_auto_restart(){
+	if was_stopped; then
+		exit 0
+	else
+		echo "$SERVICE was NOT running! Server/Java/Tmux session crashed, auto-starting"
+		mc_start
 	fi
 }
 
@@ -214,6 +235,23 @@ mc_backup() { #for running backups, using tar
 		echo "Backup complete"
 	else
 		echo "$SERVICE was not running. Not running backup."
+	fi
+}
+
+mc_stop_delay(){#10min timer for server shutdown
+	if is_running; then
+		echo "$SERVICE is running... restarting in 10 minutes. ctrl+C to cancel"
+		mc_exec "say SERVER RESTARTING IN 10 MINUTES."
+		sleep 5m
+		echo "$SERVICE is restarting in 5 minutes. ctrl+C to cancel"
+		mc_exec "say SERVER RESTARTING IN 5 MINUTES."
+		sleep 4m
+		echo "$SERVICE is restarting in 1 minute. ctrl+C to cancel"
+		mc_exec "say SERVER RESTARTING IN 1 MINUTE."
+		sleep 50
+		mc_stop
+		mc_disksavehalt
+		mc_start
 	fi
 }
 
@@ -352,6 +390,12 @@ case "$1" in
 	open)
 		tmux_open
 		;;
+	safestart)
+		mc_auto_restart
+		;;
+	slowstop)
+		mc_stop_delay
+		;;
   dumpcrashlogs)
     mc_dumpcrashlogs
     ;;
@@ -371,7 +415,7 @@ case "$1" in
     ;;
 
   *)
-  echo "Usage: $(readlink -f $0) [server number] {start|stop|restart|backup|exec|dumpcrashlogs|disksavehalt|disksaverun|status}"
+  echo "Usage: $(readlink -f $0) [server number] {start|stop|restart|backup|exec|slowrestart|safestart|dumpcrashlogs|disksavehalt|disksaverun|status}"
   exit 1
   ;;
 esac
