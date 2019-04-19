@@ -2,11 +2,19 @@
 
 MAILTO=""
 
-*/5 * * * * xeocraft 1 disksaverun
+##########################################################
+#replace /usr/local/bin/xeocraft do not trust your path
+##########################################################
+
+*/5 * * * * /usr/local/bin/xeocraft 1 disksaverun
 #writes ramdisk to disk every 5min
-*/15 * * * * xeocraft 1 safestart
+*/15 * * * * /usr/local/bin/xeocraft 1 safestart
 #verifies server is up/if crashed starts server every 15min 
-20 */1 * * * xeocraft 1 backup
+20 */1 * * * /usr/local/bin/xeocraft 1 backup
 #does tar backup every hour, 20 min after the hour
-30 3 * * * xeocraft 1 slowrestart
-#every day a 3:30AM does a 10min warning server restart
+30 * */1 * * /usr/local/bin/xeocraft 1 archive
+#arhcives/copys the newest backup every day 30min into the day (does not care if server is running)
+48 * 1 * * /usr/local/bin/xeocraft 1 thinarchive
+#monthly archives all the backups in the archive dir and cleans them out
+# 30 3 * * * /usr/local/bin/xeocraft 1 restart
+#Currently disabled as it has issues, should do a server restart every day at 3:40AM with a 30min warning
