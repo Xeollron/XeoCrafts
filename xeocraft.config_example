@@ -1,0 +1,36 @@
+####################################
+#Configuration file for xeocraft Server Script
+####################################
+
+##############################
+# Java and JVM configuration
+##############################
+#java path (RFE: auto detect) NOTE: adds /bin/java to call the java executable
+JAVA_HOME="/usr/lib/jvm/java-8-server-jre/jre"
+
+#Edit for Memory Allocation, recommended is "-Xmx6G -Xms6G" which is 6GB allocated
+MEMORY_OPTS="-Xmx6G -Xms6G"
+
+#Custom JVM options, the defaults I use are probably outdated
+JAVA_OPTIONS="-d64 -server -XX:+UseG1GC -DJINTEGRA_NATIVE_MODE -DJINTEGRA_COINIT_VALUE=0 -Dsun.io.useCanonCaches=false -Djline.terminal=jline.UnsupportedTerminal -XX:ThreadPriorityPolicy=42 -XX:CompileThreshold=1500 -XX:+TieredCompilation -XX:ParallelGCThreads=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=15 -XX:+UnlockExperimentalVMOptions -XX:+UseAdaptiveGCBoundary -XX:+UseGCOverheadLimit -XX:+UseBiasedLocking -Xnoclassgc -Xverify:none -XX:UseSSE=4 -XX:+UseThreadPriorities -Djava.net.preferIPv4Stack=true -XX:+UseLargePages -XX:+OptimizeStringConcat -XX:+UseFastAccessorMethods -Xrs -XX:+UseCompressedOops -XX:+AggressiveOpts -Dfml.queryResult=confirm"
+
+##############################
+#Server filesystem configuration
+##############################
+
+#Server Jar that will be called to launch the server (either change to server jar name or rename server jar to this)
+SERVICE='forge_latest.jar'
+
+#storage location of main server files server files
+MCSTORE="/home/$USERNAME/Documents/minecraft/xeocraft$SERVERNUM"
+#ramdisk mount point where live server will be
+MCPATH="/home/$USERNAME/Documents/minecraft/xeocraft$SERVERNUM""_ramdisk"
+#Size of the ramdisk to be created in MegaBytes, should be larger than the max expected size of the server
+DISKSIZE="6144"
+
+#Directory for backups to be stored (this will hold backups for 3 days)
+BACKUPPATH="/home/$USERNAME/Documents/minecraft/backups/xeocraft$SERVERNUM"
+#Directory for archival of backups, recommended to use large external/offsite storage
+OFFBACKUPPATH="/mnt/backups/xeocraft$SERVERNUM"
+#naming scheme for backup files
+BACKUPDIR="xeocraft""$SERVERNUM""_Backup_""$(date +%Y%m%d-%H:%M)"".tgz"
